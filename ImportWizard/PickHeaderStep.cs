@@ -1,4 +1,6 @@
-﻿using SpreadsheetGear;
+﻿using OfficeOpenXml;
+using OfficeOpenXml.Style;
+using SpreadsheetGear;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -21,41 +23,52 @@ namespace UI.WinForms
 
         private void PickHeaderStep_Load(object sender, EventArgs e)
         {
-            // Sample DataTable
-            var table = new DataTable();
-            table.Columns.Add("Name");
-            table.Columns.Add("Age");
-            table.Rows.Add("Alice", 30);
-            table.Rows.Add("Bob", 25);
-            table.Rows.Add("Charlie", 35);
+            this.NextStep = new ColumnSetupStep();
 
             // Create a new workbook and get the first worksheet
             IWorkbook workbook = Factory.GetWorkbook();
-            IWorksheet worksheet = workbook.Worksheets[0];
+            IWorksheet newWorksheet = workbook.Worksheets[0];
 
-            // Write column headers
-            for (int col = 0; col < table.Columns.Count; col++)
-            {
-                worksheet.Cells[0, col].Value = table.Columns[col].ColumnName;
-            }
+            var fileWorksheet = ExcelService.SelectedWorksheet;
 
-            // Write data rows
-            for (int row = 0; row < table.Rows.Count; row++)
+            foreach (ExcelRangeColumn xCol in fileWorksheet.Columns)
             {
-                for (int col = 0; col < table.Columns.Count; col++)
+                if (xCol.Hidden)
                 {
-                    worksheet.Cells[row + 1, col].Value = table.Rows[row][col];
+                    xCol.Hidden = false;
                 }
             }
 
-            // Optional: Autofit columns
-            worksheet.Cells[worksheet.UsedRange.Row, worksheet.UsedRange.Column,
-                            worksheet.UsedRange.Row + worksheet.UsedRange.RowCount - 1,
-                            worksheet.UsedRange.Column + worksheet.UsedRange.ColumnCount - 1]
-                .Columns.AutoFit();
+            //var dimension = fileWorksheet.Dimension;
+            //int startColumn = dimension.Start.Column;
+            //int endColumn = dimension.End.Column;
+            //var startRow = 1;
 
-            // Load the workbook into the control
-            workbookView1.ActiveWorkbook = workbook;
+            //for (int rowNum = startRow; rowNum <= fileWorksheet.Dimension.End.Row; rowNum++)
+            //{
+            //    for (int columnIndex = startColumn; columnIndex <= endColumn; columnIndex++)
+            //    {
+            //        //TODO test how correct this is, also .Text might be more suitable
+            //        var sourceCell = fileWorksheet.Cells[rowNum, columnIndex];
+            //        var destinationCell = newWorksheet.Cells[rowNum - 1, columnIndex - 1];
+
+            //        destinationCell.Formula = sourceCell.Formula;
+            //        destinationCell.Style.NumberFormat = sourceCell.Style.Numberformat.Format;
+
+            //        destinationCell.Value = sourceCell.Value;
+            //    }
+            //}
+
+            //// Load the workbook into the control
+            //workbookView1.ActiveWorkbook = workbook;
+        }
+
+        public override bool CanGoNext()
+        {
+            ExcelService.HeaderRowNumber = int.Parse(textBox1.Text);
+            NextStep.ExcelService = ExcelService;
+
+            return base.CanGoNext();
         }
     }
 }

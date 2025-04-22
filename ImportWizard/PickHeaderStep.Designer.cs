@@ -31,27 +31,51 @@
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PickHeaderStep));
             workbookView1 = new SpreadsheetGear.Windows.Forms.WorkbookView();
+            textBox1 = new TextBox();
+            label1 = new Label();
             SuspendLayout();
             // 
             // workbookView1
             // 
+            workbookView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             workbookView1.FormulaBar = null;
-            workbookView1.Location = new Point(12, 143);
+            workbookView1.Location = new Point(0, 67);
             workbookView1.Name = "workbookView1";
-            workbookView1.Size = new Size(776, 282);
+            workbookView1.Size = new Size(800, 358);
             workbookView1.TabIndex = 8;
             workbookView1.WorkbookSetState = resources.GetString("workbookView1.WorkbookSetState");
+            // 
+            // textBox1
+            // 
+            textBox1.Location = new Point(136, 38);
+            textBox1.Name = "textBox1";
+            textBox1.Size = new Size(67, 23);
+            textBox1.TabIndex = 9;
+            textBox1.Text = "1";
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new Point(12, 41);
+            label1.Name = "label1";
+            label1.Size = new Size(118, 15);
+            label1.TabIndex = 10;
+            label1.Text = "Header Row Number";
             // 
             // PickHeaderStep
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(label1);
+            Controls.Add(textBox1);
             Controls.Add(workbookView1);
             Name = "PickHeaderStep";
             Text = "PickHeaderStep";
             Load += PickHeaderStep_Load;
             Controls.SetChildIndex(workbookView1, 0);
+            Controls.SetChildIndex(textBox1, 0);
+            Controls.SetChildIndex(label1, 0);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -59,5 +83,7 @@
         #endregion
 
         private SpreadsheetGear.Windows.Forms.WorkbookView workbookView1;
+        private TextBox textBox1;
+        private Label label1;
     }
 }

@@ -74,6 +74,13 @@ namespace UI.WinForms
                 return false;
             }
 
+            if (dgvSheets.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Select a sheet first");
+                return false;
+            }
+
+            _excelService.SelectedWorksheet = dgvSheets.SelectedRows[0].DataBoundItem as ExcelWorksheet;
 
             NextStep.ExcelService = _excelService;
 

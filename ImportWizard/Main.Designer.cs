@@ -93,7 +93,7 @@
             txtFilePath.Name = "txtFilePath";
             txtFilePath.Size = new Size(689, 23);
             txtFilePath.TabIndex = 5;
-            txtFilePath.Text = "C:\\Users\\bobi\\Desktop\\Angajati si users_04.07.2024(Users).xlsx";
+            txtFilePath.Text = "C:\\Users\\bobi\\Desktop\\100mb.xlsx";
             txtFilePath.KeyDown += txtFilePath_KeyDown;
             // 
             // groupBox1
@@ -117,7 +117,6 @@
             Controls.Add(groupBox1);
             Controls.Add(tableLayoutPanel1);
             Name = "Main";
-            StartPosition = FormStartPosition.CenterScreen;
             Text = "ImportWizard";
             Load += Main_Load;
             Controls.SetChildIndex(tableLayoutPanel1, 0);
