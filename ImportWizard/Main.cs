@@ -3,21 +3,61 @@ using OfficeOpenXml;
 using ImportWizard.Services;
 using UI.WinForms.Framework;
 using System.Reflection.Metadata.Ecma335;
+using System.Diagnostics;
+using ImportWizard.Dtos;
+using OfficeOpenXml.Table;
 
 namespace UI.WinForms
 {
     public partial class Main : WizardStep
     {
-        private ExcelService _excelService;
-
+        private int selectedRowIndex = -1;
         public Main()
         {
             InitializeComponent();
+
+            lbTables.DisplayMember = nameof(ExcelTable.Name);
+            lbTables.DeSelectItemOnClick();
         }
 
         private void Main_Load(object sender, EventArgs e)
         {
+            txtFilePath.LoadAndHook();
+
             this.NextStep = new PickHeaderStep();
+        }
+
+        private void DgvSheets_SelectionChanged(object? sender, EventArgs e)
+        {
+            SelectedGridRowChanged();
+        }
+
+        private DataGridViewRow GetSelectedGridRow()
+        {
+            if (dgvSheets.SelectedRows.Count == 0)
+                return null;
+
+            return dgvSheets.SelectedRows[0];
+        }
+
+        private void SelectedGridRowChanged()
+        {
+            var selectedRow = GetSelectedGridRow();
+            
+            lbTables.Items.Clear();
+            
+            if (selectedRow == null) return;
+
+            var worksheetDto = selectedRow.DataBoundItem as WorksheetDto;
+
+            if (worksheetDto.NrTables == 0) return;
+            
+            foreach (var table in worksheetDto.Tables)
+            {
+                lbTables.Items.Add(table);
+            }
+
+            lbTables.Visible = true;
         }
 
         private void LoadImportFile()
@@ -30,19 +70,8 @@ namespace UI.WinForms
                 return;
             }
 
-            _excelService = new ExcelService(file);
-
-            _excelService.Initialize();
-
-            BindSheetsGrid();
-        }
-
-        private void txtFilePath_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                LoadImportFile();
-            }
+            ExcelService = new ExcelService(file);
+            ExcelService.Initialize();
         }
 
         private void BindSheetsGrid()
@@ -59,16 +88,22 @@ namespace UI.WinForms
 
             dgvSheets.Columns.Clear();
 
-            dgvSheets.AddCheckBoxCol(nameof(ExcelWorksheet.Hidden), "Hidden", 56);
-            dgvSheets.AddTextBoxCol(nameof(ExcelWorksheet.Name), "Sheet name")
+            dgvSheets.AddCheckBoxCol(nameof(WorksheetDto.IsHidden), "Is hidden", 64);
+
+            dgvSheets.AddTextBoxCol(nameof(WorksheetDto.Name), "Sheet name")
                 .AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
-            dgvSheets.DataSource = _excelService.Worksheets;
+            dgvSheets.AddTextBoxCol(nameof(WorksheetDto.NrTables));
+
+            dgvSheets.DataSource = ExcelService.Worksheets;
+            SelectedGridRowChanged();
+            dgvSheets.SelectionChanged -= DgvSheets_SelectionChanged;
+            dgvSheets.SelectionChanged += DgvSheets_SelectionChanged;
         }
 
         public override bool CanGoNext()
         {
-            if (_excelService == null)
+            if (ExcelService == null)
             {
                 MessageBox.Show("Load file first");
                 return false;
@@ -80,11 +115,45 @@ namespace UI.WinForms
                 return false;
             }
 
-            _excelService.SelectedWorksheet = dgvSheets.SelectedRows[0].DataBoundItem as ExcelWorksheet;
+            var worksheetDto = dgvSheets.SelectedRows[0].DataBoundItem as WorksheetDto;
+            ExcelService.SelectWorksheet(worksheetDto);
 
-            NextStep.ExcelService = _excelService;
+            if (lbTables.SelectedItem is ExcelTable table)
+            {
+                ExcelService.SelectTable(table);
+                
+                //go to a different step because the table has already a header
+                NextStep = new ColumnSetupStep();
+            }
+            else
+            {
+                //there is no table selected, i have to figure out where the header begins
+                //next step remains the same
+            }
+
+            NextStep.ExcelService = ExcelService;
 
             return true;
+        }
+
+        private async void btnLoad_Click(object sender, EventArgs e)
+        {
+            UseWaitCursor = true;
+            Enabled = false;
+            try
+            {
+                await Task.Run(LoadImportFile);
+                BindSheetsGrid();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                UseWaitCursor = false;
+                Enabled = true;
+            }
         }
     }
 }

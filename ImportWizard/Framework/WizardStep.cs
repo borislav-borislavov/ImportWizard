@@ -44,6 +44,8 @@ namespace UI.WinForms.Framework
 
         public ExcelService ExcelService { get; set; }
 
+        public bool IsShown { get; private set; }
+
         public WizardStep()
         {
             InitializeComponent();
@@ -53,6 +55,7 @@ namespace UI.WinForms.Framework
 
         private void WizardStepb_Load(object sender, EventArgs e)
         {
+            IsShown = true;
             RefreshUI();
         }
 
@@ -93,19 +96,33 @@ namespace UI.WinForms.Framework
             this.Visible = false;
 
             NextStep.PreviousStep = this;
-            NextStep.Show();
+
+            if (NextStep.IsShown == false)
+            {
+                NextStep.Show();
+            }
+            else
+            {
+                NextStep.OnReturn();
+            }
 
             NextStep.Visible = true;
         }
 
-        public virtual bool CanGoNext()
-        {
-            return true;
-        }
+        /// <summary>
+        /// Used to validate if it's possible to go to the next step.
+        /// </summary>
+        public virtual bool CanGoNext() => true;
 
-        public virtual bool CanGoPrevious()
-        {
-            return true;
-        }
+        /// <summary>
+        /// Used to validate if it's possible to go to the previous step.
+        /// </summary>
+        /// <returns></returns>
+        public virtual bool CanGoPrevious() => true;
+
+        /// <summary>
+        /// Called only when the step is shown again.
+        /// </summary>
+        public virtual void OnReturn() { }
     }
 }

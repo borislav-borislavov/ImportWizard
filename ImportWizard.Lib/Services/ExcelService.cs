@@ -1,7 +1,9 @@
 ﻿using Dapper;
+using ImportWizard.Dtos;
 using ImportWizard.Models;
 using Microsoft.Data.SqlClient;
 using OfficeOpenXml;
+using OfficeOpenXml.Table;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -11,6 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static OfficeOpenXml.ExcelErrorValue;
 
 namespace ImportWizard.Services
 {
@@ -31,22 +34,31 @@ namespace ImportWizard.Services
 
         public List<ColumnPreference> ColumnPreferences { get; set; } = new List<ColumnPreference>();
 
-        public List<ExcelWorksheet> Worksheets { get; } = new List<ExcelWorksheet>();
+        public List<WorksheetDto> Worksheets { get; } = new List<WorksheetDto>();
+
+        private List<ExcelWorksheet> _worksheets = new List<ExcelWorksheet>();
 
         private ExcelWorksheet? _selectedWorksheet;
-        public ExcelWorksheet? SelectedWorksheet 
+        public ExcelWorksheet? SelectedWorksheet => _selectedWorksheet;
+
+        private ExcelTable _selectedTable;
+
+        private DataTable _data = null;
+
+        private int headerRowNumber;
+        public int HeaderRowNumber
         {
-            get => _selectedWorksheet;
+            get => headerRowNumber;
+
             set
             {
-                _selectedWorksheet = value;
-
-                //Column preferences get reset when new sheet gets selected
-                ColumnPreferences.Clear();
+                if (value != headerRowNumber)
+                {
+                    headerRowNumber = value;
+                    ColumnPreferences.Clear();
+                }
             }
         }
-
-        public int HeaderRowNumber { get; set; }
         public string TableName { get; set; }
         public string ConnectionString { get; set; }
 
@@ -64,7 +76,16 @@ namespace ImportWizard.Services
 
             foreach (var worksheet in workbook.Worksheets)
             {
-                Worksheets.Add(worksheet);
+                _worksheets.Add(worksheet);
+
+                Worksheets.Add(new WorksheetDto
+                {
+                    Name = worksheet.Name,
+                    IsHidden = worksheet.Hidden != eWorkSheetHidden.Visible,
+                    NrTables = worksheet.Tables.Count, //for now PivotTables are not supported
+                    Index = worksheet.Index,
+                    Tables = worksheet.Tables
+                });
             }
         }
 
@@ -73,6 +94,28 @@ namespace ImportWizard.Services
             if (ColumnPreferences.Count > 0)
             {
                 throw new Exception("Investigate if this shoud be happening");
+            }
+
+            if (_selectedTable != null)
+            {
+                foreach (var excelTableColumn in _selectedTable.Columns)
+                {
+
+                    var colPref = new ColumnPreference
+                    {
+                        Index = excelTableColumn.Position,
+                        Selected = true,
+                        Source = excelTableColumn.Name,
+                        Destination = excelTableColumn.Name,
+                        Type = SqlServerDataType.NVARCHAR,
+                        MaxLength = -1,
+                        IsNullable = true
+                    };
+
+                    ColumnPreferences.Add(colPref);
+                }
+
+                return;
             }
 
             var dimension = SelectedWorksheet.Dimension;
@@ -103,26 +146,45 @@ namespace ImportWizard.Services
         }
 
         /// <summary>
-        /// If this throws an exception while reading copy all the data from the excel file in to a fresh one and try with it
+        /// Returns the data for the current worksheet
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="hasHeader"></param>
-        /// <returns></returns>
-        public DataTable GetDataTableFromExcel()
+        public DataTable GetImportData()
         {
-            var dt = new DataTable();
-            //var hasHeader = HeaderRowStart > 0;
+            if (_data != null)
+                return _data;
 
-            //OnMessage?.Invoke(this, $"Parsing Excel File");
+            _data = new DataTable();
 
-            foreach (ExcelRangeColumn xCol in SelectedWorksheet.Columns)
+            if (_selectedTable != null)
             {
-                if (xCol.Hidden)
+                foreach (ExcelTableColumn column in _selectedTable.Columns)
                 {
-                    xCol.Hidden = false;
+                    var colPreference = ColumnPreferences[column.Position];
+                    _data.Columns.Add(colPreference.Destination);
+                }
+
+                foreach (ExcelTableRow dataRow in _selectedTable.DataRows)
+                {
+                    DataRow row = _data.Rows.Add();
+
+                    foreach (var colPref in ColumnPreferences)
+                    {
+                        var debug = dataRow.GetValue(colPref.Source);
+
+                        row[colPref.Index] = dataRow.GetValue(colPref.Source);
+                    }
                 }
             }
+            else
+            {
+                GetDataFromSheet();
+            }
 
+            return _data;
+        }
+
+        private void GetDataFromSheet()
+        {
             var dimension = SelectedWorksheet.Dimension;
             int startColumn = dimension.Start.Column;
             int endColumn = dimension.End.Column;
@@ -135,17 +197,17 @@ namespace ImportWizard.Services
                 if (cellText != colPreference.Source)
                     throw new Exception($"Expected column {colPreference.Source} at index {colPreference.Index} not found!");
 
-                dt.Columns.Add(colPreference.Destination);
+                _data.Columns.Add(colPreference.Destination);
             }
 
-            var colsCount = dt.Columns.Count;
+            var colsCount = _data.Columns.Count;
 
             //TODO make a setting for DataRowNumber in the future
             var dataStartRow = HeaderRowNumber + 1;
 
             for (int rowNum = dataStartRow; rowNum <= SelectedWorksheet.Dimension.End.Row; rowNum++)
             {
-                DataRow row = dt.Rows.Add();
+                DataRow row = _data.Rows.Add();
 
                 for (int columnIndex = startColumn; columnIndex <= endColumn; columnIndex++)
                 {
@@ -154,16 +216,14 @@ namespace ImportWizard.Services
 
                     var cellText = SelectedWorksheet.Cells[rowNum, columnIndex].Text;
 
-                    if (cellText.Length > dt.Columns[columnIndex - 1].MaxLength)
+                    if (cellText.Length > _data.Columns[columnIndex - 1].MaxLength)
                     {
-                        dt.Columns[columnIndex - 1].MaxLength = cellText.Length;
+                        _data.Columns[columnIndex - 1].MaxLength = cellText.Length;
                     }
 
                     row[columnIndex - 1] = cellText;
                 }
             }
-
-            return dt;
         }
 
         private SqlConnection _connection;
@@ -178,7 +238,7 @@ namespace ImportWizard.Services
 
                 TableName = TableName.Trim();
 
-                var dataTable = await Task.Run(() => GetDataTableFromExcel());
+                var dataTable = await Task.Run(() => GetImportData());
 
                 _connection = new SqlConnection(ConnectionString);
 
@@ -269,7 +329,7 @@ namespace ImportWizard.Services
             {
                 //if (MessageBox.Show($"Table '{TableName}' already exists, do you wish to drop it (if no data will be appended)?", "Warning", MessageBoxButtons.YesNo) == DialogResult.Yes)
                 //{
-                    _connection.Execute($"DROP TABLE [{TableName}]");
+                _connection.Execute($"DROP TABLE [{TableName}]");
                 //}
                 //else
                 //{
@@ -325,5 +385,39 @@ namespace ImportWizard.Services
 
             return true;
         }
+
+        private ExcelWorksheet GetWorksheetFromDto(WorksheetDto worksheetDto)
+        {
+            if (worksheetDto == null) return null;
+            if (_worksheets == null || _worksheets.Count == 0) return null;
+
+            return _worksheets.FirstOrDefault(w => w.Index == worksheetDto.Index);
+        }
+
+        public void SelectWorksheet(WorksheetDto? worksheetDto)
+        {
+            if (worksheetDto == null)
+                throw new ArgumentNullException(nameof(worksheetDto));
+
+            _selectedWorksheet = GetWorksheetFromDto(worksheetDto);
+
+            //Column preferences get reset when new sheet gets selected
+            ColumnPreferences.Clear();
+
+            _data = null;
+
+            _selectedTable = null;
+        }
+
+        public void SelectTable(ExcelTable table)
+        {
+            _selectedTable = table;
+
+            //reset data and column preferences when a new table is selected
+            ColumnPreferences.Clear();
+            _data = null;
+        }
+
+        //TODO Implement IDisposable?
     }
 }

@@ -9,10 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SpreadsheetGear.Windows" Version="9.3.37" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ImportWizard.Lib\ImportWizard.csproj" />
   </ItemGroup>
 

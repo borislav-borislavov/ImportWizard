@@ -28,22 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PickHeaderStep));
-            workbookView1 = new SpreadsheetGear.Windows.Forms.WorkbookView();
             textBox1 = new TextBox();
             label1 = new Label();
             SuspendLayout();
-            // 
-            // workbookView1
-            // 
-            workbookView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            workbookView1.FormulaBar = null;
-            workbookView1.Location = new Point(0, 67);
-            workbookView1.Name = "workbookView1";
-            workbookView1.Size = new Size(800, 358);
-            workbookView1.TabIndex = 8;
-            workbookView1.WorkbookSetState = resources.GetString("workbookView1.WorkbookSetState");
             // 
             // textBox1
             // 
@@ -69,11 +56,9 @@
             ClientSize = new Size(800, 450);
             Controls.Add(label1);
             Controls.Add(textBox1);
-            Controls.Add(workbookView1);
             Name = "PickHeaderStep";
             Text = "PickHeaderStep";
             Load += PickHeaderStep_Load;
-            Controls.SetChildIndex(workbookView1, 0);
             Controls.SetChildIndex(textBox1, 0);
             Controls.SetChildIndex(label1, 0);
             ResumeLayout(false);
@@ -81,8 +66,6 @@
         }
 
         #endregion
-
-        private SpreadsheetGear.Windows.Forms.WorkbookView workbookView1;
         private TextBox textBox1;
         private Label label1;
     }

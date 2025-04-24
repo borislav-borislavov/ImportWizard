@@ -1,4 +1,5 @@
-﻿using ImportWizard.Services;
+﻿using ImportWizard.Models;
+using ImportWizard.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -34,6 +35,12 @@ namespace UI.WinForms
                 ExcelService.LoadColumnPreferences();
 
             dgvColumnPreferences.DataSource = ExcelService.ColumnPreferences;
+        }
+
+        public override void OnReturn()
+        {
+            if (ExcelService.ColumnPreferences.Count == 0)
+                ExcelService.LoadColumnPreferences();
         }
 
         public override bool CanGoNext()
