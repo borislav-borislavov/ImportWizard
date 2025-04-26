@@ -155,5 +155,22 @@ namespace UI.WinForms
                 Enabled = true;
             }
         }
+
+        private void btnBrowse_Click(object sender, EventArgs e)
+        {
+            using (var fileDialog = new OpenFileDialog())
+            {
+                fileDialog.Filter = ".xlsx|*.xlsx|.xls|*.xls|.csv|*.csv";
+                fileDialog.RestoreDirectory = true;
+                fileDialog.ShowPreview = true;
+                fileDialog.ShowHelp = true;
+                fileDialog.ShowHiddenFiles = true;
+
+                if (fileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    txtFilePath.Text = fileDialog.FileName;
+                }
+            }
+        }
     }
 }
