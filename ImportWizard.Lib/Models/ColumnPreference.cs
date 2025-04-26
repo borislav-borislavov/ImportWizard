@@ -18,5 +18,6 @@ namespace ImportWizard.Models
         public int? NumericPrecision { get; set; }
         public int? NumericScale { get; set; }
         public string? DefaultValue { get; internal set; }
+        public ExcelValueType ValueType { get; set; }
     }
 }
