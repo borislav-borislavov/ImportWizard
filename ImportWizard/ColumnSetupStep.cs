@@ -25,6 +25,13 @@ namespace UI.WinForms
             //dgvColumnPreferences.AutoGenerateColumns = false;
             dgvColumnPreferences.RowHeadersVisible = false;
             dgvColumnPreferences.MultiSelect = false;
+
+            dgvColumnPreferences.CellValueChanged += DgvColumnPreferences_CellValueChanged;
+        }
+
+        private void DgvColumnPreferences_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        {
+            ExcelService.ResetImportData();
         }
 
         private void ColumnSetupStep_Load(object sender, EventArgs e)

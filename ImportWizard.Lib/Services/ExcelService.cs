@@ -173,11 +173,10 @@ namespace ImportWizard.Services
 
                         row[colPref.Index] = dataRow.GetValue(colPref.Source);
                     }
-                }
-            }
-            else
+
+        public void ResetImportData()
             {
-                GetDataFromSheet();
+            _data = null;
             }
 
             return _data;
