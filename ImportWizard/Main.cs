@@ -43,15 +43,15 @@ namespace UI.WinForms
         private void SelectedGridRowChanged()
         {
             var selectedRow = GetSelectedGridRow();
-            
+
             lbTables.Items.Clear();
-            
+
             if (selectedRow == null) return;
 
             var worksheetDto = selectedRow.DataBoundItem as WorksheetDto;
 
             if (worksheetDto.NrTables == 0) return;
-            
+
             foreach (var table in worksheetDto.Tables)
             {
                 lbTables.Items.Add(table);
@@ -121,7 +121,7 @@ namespace UI.WinForms
             if (lbTables.SelectedItem is ExcelTable table)
             {
                 ExcelService.SelectTable(table);
-                
+
                 //go to a different step because the table has already a header
                 NextStep = new ColumnSetupStep();
             }

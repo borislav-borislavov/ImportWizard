@@ -42,6 +42,15 @@ namespace UI.WinForms
                 ExcelService.LoadColumnPreferences();
 
             dgvColumnPreferences.DataSource = ExcelService.ColumnPreferences;
+
+            if (ExcelService.SelectedTable != null)
+            {
+                txtDestinationTableName.Text = ExcelService.SelectedTable.Name;
+            }
+            else
+            {
+                txtDestinationTableName.Text = ExcelService.SelectedWorksheet.Name;
+            }
         }
 
         public override void OnReturn()
@@ -59,6 +68,7 @@ namespace UI.WinForms
             }
 
             ExcelService.TableName = txtDestinationTableName.Text;
+
             NextStep.ExcelService = ExcelService;
 
             return base.CanGoNext();
