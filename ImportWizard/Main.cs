@@ -127,6 +127,8 @@ namespace UI.WinForms
             }
             else
             {
+                ExcelService.SelectTable(null);
+                NextStep = new PickHeaderStep();
                 //there is no table selected, i have to figure out where the header begins
                 //next step remains the same
             }
