@@ -41,7 +41,7 @@ namespace ImportWizard.Services
         private ExcelWorksheet? _selectedWorksheet;
         public ExcelWorksheet? SelectedWorksheet => _selectedWorksheet;
 
-        private ExcelTable _selectedTable;
+        public ExcelTable SelectedTable { get; private set; }
 
         private DataTable _data = null;
 
@@ -96,9 +96,9 @@ namespace ImportWizard.Services
                 throw new Exception("Investigate if this shoud be happening");
             }
 
-            if (_selectedTable != null)
+            if (SelectedTable != null)
             {
-                foreach (var excelTableColumn in _selectedTable.Columns)
+                foreach (var excelTableColumn in SelectedTable.Columns)
                 {
 
                     var colPref = new ColumnPreference
@@ -153,75 +153,89 @@ namespace ImportWizard.Services
             if (_data != null)
                 return _data;
 
+            if (ColumnPreferences.Count == 0)
+                throw new Exception("Column preferences are not set. Please call LoadColumnPreferences() first.");
+
             _data = new DataTable();
 
-            if (_selectedTable != null)
+            if (SelectedTable != null)
             {
-                foreach (ExcelTableColumn column in _selectedTable.Columns)
-                {
-                    var colPreference = ColumnPreferences[column.Position];
-                    _data.Columns.Add(colPreference.Destination);
-                }
-
-                foreach (ExcelTableRow dataRow in _selectedTable.DataRows)
-                {
-                    DataRow row = _data.Rows.Add();
-
-                    foreach (var colPref in ColumnPreferences)
-                    {
-                        var debug = dataRow.GetValue(colPref.Source);
-
-                        row[colPref.Index] = dataRow.GetValue(colPref.Source);
-                    }
-
-        public void ResetImportData()
+                LoadData(
+                    dataRange: SelectedTable.WorkSheet.Cells[SelectedTable.Address.FullAddress],
+                    headerRowNumber: 1
+                    );
+            }
+            else
             {
-            _data = null;
+                var endRow = SelectedWorksheet.Dimension.End.Row;
+                var startCol = ColumnPreferences.OrderBy(cp => cp.Index).First().Index + 1;
+                var endCol = ColumnPreferences.OrderByDescending(cp => cp.Index).First().Index + 1;
+
+                LoadData(
+                    dataRange: SelectedWorksheet.Cells[HeaderRowNumber, startCol, endRow, endCol],
+                    headerRowNumber: HeaderRowNumber
+                    );
             }
 
             return _data;
         }
 
-        private void GetDataFromSheet()
+        public void ResetImportData()
         {
-            var dimension = SelectedWorksheet.Dimension;
-            int startColumn = dimension.Start.Column;
-            int endColumn = dimension.End.Column;
+            _data = null;
+        }
 
-            for (int columnPosition = startColumn; columnPosition <= endColumn; columnPosition++)
+        void LoadData(ExcelRange dataRange, int headerRowNumber)
+        {
+            if (_data.Columns.Count != 0)
+                throw new Exception("Unexpected number of columns when loading data.");
+
+            //There is a bug in Epplus in which shows a wrong number of rows after fetching the value of a cell from the dataRange
+            var nrRows = dataRange.Rows;
+            var rowInfos = dataRange.EntireRow.ToList();
+            var columnInfos = dataRange.EntireColumn.ToList();
+
+            var headerRowInfo = rowInfos[headerRowNumber - 1];
+
+            foreach (var colPref in ColumnPreferences)
             {
-                var cellText = SelectedWorksheet.Cells[HeaderRowNumber, columnPosition].Text;
-                var colPreference = ColumnPreferences[columnPosition - 1];
+                var colInfo = columnInfos[colPref.Index];
 
-                if (cellText != colPreference.Source)
-                    throw new Exception($"Expected column {colPreference.Source} at index {colPreference.Index} not found!");
+                var excelColumn = dataRange[headerRowInfo.StartRow, colInfo.StartColumn];
 
-                _data.Columns.Add(colPreference.Destination);
+                if (excelColumn.Text != colPref.Source)
+                    throw new Exception($"Expected column {colPref.Source} at index {colPref.Index} not found!");
+
+                _data.Columns.Add(colPref.Destination);
             }
 
-            var colsCount = _data.Columns.Count;
+            var headerRowIdx = rowInfos.IndexOf(headerRowInfo);
 
-            //TODO make a setting for DataRowNumber in the future
-            var dataStartRow = HeaderRowNumber + 1;
-
-            for (int rowNum = dataStartRow; rowNum <= SelectedWorksheet.Dimension.End.Row; rowNum++)
+            foreach (var rowInfo in rowInfos.Skip(headerRowIdx + 1))
             {
-                DataRow row = _data.Rows.Add();
+                DataRow dataRow = _data.Rows.Add();
 
-                for (int columnIndex = startColumn; columnIndex <= endColumn; columnIndex++)
+                foreach (var colPref in ColumnPreferences)
                 {
-                    if (columnIndex > colsCount)
-                        break;
+                    var colInfo = columnInfos[colPref.Index];
 
-                    var cellText = SelectedWorksheet.Cells[rowNum, columnIndex].Text;
-
-                    if (cellText.Length > _data.Columns[columnIndex - 1].MaxLength)
-                    {
-                        _data.Columns[columnIndex - 1].MaxLength = cellText.Length;
-                    }
-
-                    row[columnIndex - 1] = cellText;
+                    SetValue(colPref, dataRange[rowInfo.StartRow, colInfo.StartColumn], dataRow);
                 }
+            }
+        }
+
+        private void SetValue(ColumnPreference colPref, ExcelRangeBase cell, DataRow dataRow)
+        {
+            switch (colPref.ValueType)
+            {
+                case ExcelValueType.Formated:
+                    dataRow[colPref.Index] = cell.Text;
+                    break;
+                case ExcelValueType.Literal:
+                    dataRow[colPref.Index] = cell.Value;
+                    break;
+                default:
+                    throw new Exception($"ExcelValueType {colPref.ValueType} is not handled!");
             }
         }
 
@@ -405,12 +419,12 @@ namespace ImportWizard.Services
 
             _data = null;
 
-            _selectedTable = null;
+            SelectedTable = null;
         }
 
         public void SelectTable(ExcelTable table)
         {
-            _selectedTable = table;
+            SelectedTable = table;
 
             //reset data and column preferences when a new table is selected
             ColumnPreferences.Clear();
