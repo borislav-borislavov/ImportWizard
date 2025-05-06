@@ -20,16 +20,11 @@ namespace ImportWizard.Services
     public class ExcelService
     {
         /// <summary>
-        /// The excel file path
-        /// </summary>
-        public string FilePath { get; }
-
-        /// <summary>
         /// The size of the batch when transfering data to a SqlServer database
         /// </summary>
         public int BatchSize { get; set; }
 
-        private ExcelPackage package = null;
+        private ExcelPackage _package = null;
         private ExcelWorkbook workbook = null;
 
         public List<ColumnPreference> ColumnPreferences { get; set; } = new List<ColumnPreference>();
@@ -59,20 +54,31 @@ namespace ImportWizard.Services
                 }
             }
         }
-        public string TableName { get; set; }
-        public string ConnectionString { get; set; }
+        public string? TableName { get; set; }
+        public string? ConnectionString { get; set; }
 
-        public ExcelService(string filePath)
+        public ExcelService()
         {
-            FilePath = filePath;
-
             new EPPlusLicense().SetNonCommercialPersonal("ImportWizard");
         }
 
-        public void Initialize()
+        public void LoadFile(string filePath)
         {
-            package = new ExcelPackage(FilePath);
-            workbook = package.Workbook;
+            _package = new ExcelPackage(filePath);
+
+            Initialize();
+        }
+
+        public void LoadExcelPackage(ExcelPackage package)
+        {
+            _package = package;
+
+            Initialize();
+        }
+
+        private void Initialize()
+        {
+            workbook = _package.Workbook;
 
             foreach (var worksheet in workbook.Worksheets)
             {

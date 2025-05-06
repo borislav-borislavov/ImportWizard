@@ -70,8 +70,8 @@ namespace UI.WinForms
                 return;
             }
 
-            ExcelService = new ExcelService(file);
-            ExcelService.Initialize();
+            ExcelService = new ExcelService();
+            ExcelService.LoadFile(file);
         }
 
         private void BindSheetsGrid()
